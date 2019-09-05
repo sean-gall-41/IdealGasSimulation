@@ -58,13 +58,15 @@ class GasParticle:
     # TODO: fix wacky bouncing bug for off values/combinations of scale factor and radius
     #       Maybe particle is getting trapped within the distance calculated between frames?
     def step(self, dt, bounds):
-        if abs(bounds[1]-self.position[0]) < self.radius:
+        delta = 1.0E-2
+        epsilon = self.radius + delta
+        if abs(bounds[1]-self.position[0]) <= epsilon:
             self.velocity[0] = -self.velocity[0]
-        elif abs(bounds[0]-self.position[0]) < self.radius:
+        elif abs(bounds[0]-self.position[0]) <= epsilon:
             self.velocity[0] = -self.velocity[0]
-        elif abs(bounds[3]-self.position[1]) < self.radius:
+        elif abs(bounds[3]-self.position[1]) <= epsilon:
             self.velocity[1] = -self.velocity[1]
-        elif abs(bounds[2]-self.position[1]) < self.radius:
+        elif abs(bounds[2]-self.position[1]) <= epsilon:
             self.velocity[1] = -self.velocity[1]
         #now update positions regardless if collision occurred 
         self.position += dt*self.velocity
@@ -83,8 +85,10 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH, -0.5*BOX_HEIGHT), BOX_WIDTH,
 ax.add_patch(rect)
 
 #TODO: make sure particle trails fade away over time
+delta = 1.0E-1
+epsilon = PARTICLE_RADIUS + delta
 my_particle = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
-                          [-0.5*BOX_WIDTH+0.5, -0.5*BOX_HEIGHT+0.5],
+                          [-0.5*BOX_WIDTH+epsilon, -0.5*BOX_HEIGHT+epsilon],
                           [3.2, 2.0])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
