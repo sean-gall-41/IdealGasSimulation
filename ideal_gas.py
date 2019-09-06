@@ -54,6 +54,10 @@ class GasParticle:
     def velocity(self, velocity):
         self.__velocity = velocity
 
+    # predicate function to determine whether the caller collides with
+    # the parameter particle
+    def collides_with(self, particle):
+        pass
     # bounds is a list rep the bounding box: [x_min, x_max, y_min, y_max]
     def step(self, dt, bounds): 
 
@@ -75,7 +79,8 @@ class GasParticle:
 # A particle box represents a group of N gas particles confined
 # within a box of dimensions bounds
 class ParticleBox():
-    def __init__(self, N=25, bounds=[-1.0, 1.0, -1.0, 1.0]):
+    def __init__(self, t=0.0, N=25, bounds=[-1.0, 1.0, -1.0, 1.0]):
+        self.__t = t
         self.__N = N
         self.__bounds = bounds
         self.__particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
@@ -83,6 +88,14 @@ class ParticleBox():
                                         -0.5*BOX_HEIGHT + BOX_HEIGHT*np.random.random()],
                                         -0.5 + np.random.random((1,2))) for i in np.arange(N)])
 
+    @property
+    def t(self):
+        return self.__t
+    
+    @t.setter
+    def t(self, t):
+        self.__t = t
+    
     @property
     def N(self):
         return self.__N
@@ -109,7 +122,7 @@ class ParticleBox():
         self.particle_list = list
 
     
-my_box = ParticleBox(20, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(0.0, 20, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 # Set up figure
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
