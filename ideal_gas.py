@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 #GLOBAL VARIABLES
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -5.0, 5.0, -5.0, 5.0
-PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.07
+PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.05
 SCALE_FACTOR = 0.5
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
@@ -57,7 +57,11 @@ class GasParticle:
     # predicate function to determine whether the caller collides with
     # the parameter particle
     def collides_with(self, particle):
-        pass
+        D =  np.sqrt((self.position[0] - particle.position[0])**2 + 
+                     (self.position[1] - particle.position[1])**2)
+        
+        return True if D < self.radius + particle.radius else False
+
     # bounds is a list rep the bounding box: [x_min, x_max, y_min, y_max]
     def step(self, dt, bounds): 
 
@@ -86,7 +90,8 @@ class ParticleBox():
         self.__particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
                                         [-0.5*BOX_WIDTH + BOX_WIDTH*np.random.random(), 
                                         -0.5*BOX_HEIGHT + BOX_HEIGHT*np.random.random()],
-                                        -0.5 + np.random.random((1,2))) for i in np.arange(N)])
+                                        [-1.0 + np.random.random(), -1.0 + np.random.random()]) 
+                                        for i in np.arange(N)])
 
     @property
     def t(self):
@@ -121,8 +126,13 @@ class ParticleBox():
     def particle_list(self, list):
         self.particle_list = list
 
+    # Steps the state of the particle box forward by time dt
+    # => all particle positions and velocities are updated. 
+    def step(self, dt):
+        pass
+
     
-my_box = ParticleBox(0.0, 20, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(0.0, 50, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 # Set up figure
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
@@ -162,12 +172,17 @@ def init():
     return particle_pos, #particle_path,
 
 def animate(i):
-    my_particle_1.step(dt, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
-    my_particle_2.step(dt, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+    particle_pos_x = []
+    particle_pos_y = []
+    for particle in my_box.particle_list:
+        particle.step(dt, my_box.bounds)
+        particle_pos_x.append(particle.position[0])
+        particle_pos_y.append(particle.position[1])
+    # my_particle_1.step(dt, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+    # my_particle_2.step(dt, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
     # pos_x.append(my_particle.position[0])
     # pos_y.append(my_particle.position[1])
-    particle_pos.set_data([my_particle_1.position[0], my_particle_2.position[0]], 
-                          [my_particle_1.position[1], my_particle_2.position[1]])
+    particle_pos.set_data(particle_pos_x, particle_pos_y)
     # particle_path.set_data(pos_x, pos_y)
     return particle_pos, #particle_path,
 
