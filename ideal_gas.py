@@ -2,10 +2,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
 
+# GLOBAL TODO: Ensure that changing certain parameters (particle radius, box dimensions, etc.)
+# is robust ie that changes to these parameters do not change eg how close it looks like balls 
+# get to walls. This requires some parameters to be proportional to each other (eg particle radius
+# with marker size)
+
 #GLOBAL VARIABLES
 
-X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -5.0, 5.0, -5.0, 5.0
-PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.05
+X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
+PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.035
 SCALE_FACTOR = 0.5
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
@@ -126,13 +131,17 @@ class ParticleBox():
     def particle_list(self, list):
         self.particle_list = list
 
+    # TODO: migrate step function from GasParticle class over here. Then
+    # have step return the updated list of positions and velocities.
+    # This also means you should combine position and velocity lists into 
+    # a single list, for easier readability and more maintainable code (like
+    # when you access positions in animate function: just use list-splicing)
     # Steps the state of the particle box forward by time dt
     # => all particle positions and velocities are updated. 
     def step(self, dt):
         pass
 
-    
-my_box = ParticleBox(0.0, 50, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+
 # Set up figure
 fig = plt.figure()
 ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
@@ -140,36 +149,28 @@ ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
 
 ax.set_title('Ideal Gas In a Box')
 
-rect = plt.Rectangle((-0.5*BOX_WIDTH, -0.5*BOX_HEIGHT), BOX_WIDTH, 
-                     BOX_HEIGHT, lw=1.5, ec='k', fc='none')
+offset = 0.05 # an offset to make particles look like they are actually bouncing off walls
+# TODO: link marker size to box collisions and ensure that regardless which parameter you change,
+#       the wall collision behaviour is unchanged (ie balls still look like they hit walls)
+rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+2*offset, 
+                     BOX_HEIGHT+2*offset, lw=1.5, ec='k', fc='none')
 
 ax.add_patch(rect)
 
-#TODO: make sure particle trails fade away over time
-
 np.random.seed(0)
-# particles = [GastParticle(PARTICLE_MASS, PARTICLE_RADIUS, )]
-
-my_particle_1 = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
-                          [-0.5*BOX_WIDTH, 0.0],
-                          [2.0, 2.0])
-my_particle_2 = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
-                            [0.5*BOX_WIDTH, 0.0], [-2.0, 3.0])
+my_box = ParticleBox(0.0, 50, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
-marker_size = int(fig.dpi*2*my_particle_1.radius*fig.get_figwidth()
+marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
                   / np.diff(ax.get_xbound())[0])
+
 particle_pos, = ax.plot([], [], 'bo', ms=marker_size)
-# pos_x = []
-# pos_y = []
-# particle_path, = ax.plot([], [], c='0.75', lw=1)
 
 dt = 1./30
 
 def init():
     particle_pos.set_data([], [])
-    # particle_path.set_data(pos_x, pos_y)
-    return particle_pos, #particle_path,
+    return particle_pos, 
 
 def animate(i):
     particle_pos_x = []
@@ -178,13 +179,8 @@ def animate(i):
         particle.step(dt, my_box.bounds)
         particle_pos_x.append(particle.position[0])
         particle_pos_y.append(particle.position[1])
-    # my_particle_1.step(dt, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
-    # my_particle_2.step(dt, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
-    # pos_x.append(my_particle.position[0])
-    # pos_y.append(my_particle.position[1])
     particle_pos.set_data(particle_pos_x, particle_pos_y)
-    # particle_path.set_data(pos_x, pos_y)
-    return particle_pos, #particle_path,
+    return particle_pos,
 
 anim = animation.FuncAnimation(fig, animate, frames=30, interval=10, blit=True,
                                init_func=init)
