@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 #GLOBAL VARIABLES
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -5.0, 5.0, -5.0, 5.0
-PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.05
+PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.07
 SCALE_FACTOR = 0.5
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
@@ -58,16 +58,34 @@ class GasParticle:
     # TODO: fix wacky bouncing bug for off values/combinations of scale factor and radius
     #       Maybe particle is getting trapped within the distance calculated between frames?
     def step(self, dt, bounds):
-        delta = 1.0E-2
-        epsilon = self.radius + delta
-        if abs(bounds[1]-self.position[0]) <= epsilon:
-            self.velocity[0] = -self.velocity[0]
-        elif abs(bounds[0]-self.position[0]) <= epsilon:
-            self.velocity[0] = -self.velocity[0]
-        elif abs(bounds[3]-self.position[1]) <= epsilon:
-            self.velocity[1] = -self.velocity[1]
-        elif abs(bounds[2]-self.position[1]) <= epsilon:
-            self.velocity[1] = -self.velocity[1]
+        # TODO: Should probably make delta dependent on radius so that changing global var doesnt 
+        #       mess everything up. A fair assessment: if we increase radius, we get a greater "window"
+        #       for our particle to become trapped in. 
+
+        if self.position[0] < self.radius + bounds[0]:
+            self.position[0] = self.radius + bounds[0]
+            self.velocity[0] *= -1
+        if self.position[0] > -self.radius + bounds[1]:
+            self.position[0] = -self.radius + bounds[1]
+            self.velocity[0] *= -1
+        if self.position[1] < self.radius + bounds[2]:
+            self.position[1] = self.radius + bounds[2]
+            self.velocity[1] *= -1
+        if self.position[1] > -self.radius + bounds[3]:
+            self.position[1] = -self.radius + bounds[3]
+            self.velocity[1] *= -1
+
+
+        # delta = 1.0E-2
+        # epsilon = self.radius + delta
+        # if abs(bounds[1]-self.position[0]) <= epsilon:
+        #     self.velocity[0] = -self.velocity[0]
+        # elif abs(bounds[0]-self.position[0]) <= epsilon:
+        #     self.velocity[0] = -self.velocity[0]
+        # elif abs(bounds[3]-self.position[1]) <= epsilon:
+        #     self.velocity[1] = -self.velocity[1]
+        # elif abs(bounds[2]-self.position[1]) <= epsilon:
+        #     self.velocity[1] = -self.velocity[1]
         #now update positions regardless if collision occurred 
         self.position += dt*self.velocity
 
@@ -85,11 +103,9 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH, -0.5*BOX_HEIGHT), BOX_WIDTH,
 ax.add_patch(rect)
 
 #TODO: make sure particle trails fade away over time
-delta = 1.0E-1
-epsilon = PARTICLE_RADIUS + delta
 my_particle = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
-                          [-0.5*BOX_WIDTH+epsilon, -0.5*BOX_HEIGHT+epsilon],
-                          [3.2, 2.0])
+                          [-0.5*BOX_WIDTH, 0.0],
+                          [5.0, 2.5])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
 marker_size = int(fig.dpi*2*my_particle.radius*fig.get_figwidth()
@@ -97,7 +113,7 @@ marker_size = int(fig.dpi*2*my_particle.radius*fig.get_figwidth()
 particle_pos, = ax.plot([], [], 'bo', ms=marker_size)
 pos_x = []
 pos_y = []
-particle_path, = ax.plot([], [], 'g--', lw=2)
+particle_path, = ax.plot([], [], c='0.75', lw=1)
 
 dt = 1./30
 
