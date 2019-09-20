@@ -67,29 +67,12 @@ class GasParticle:
         
         return True if D < self.radius + particle.radius else False
 
-    # bounds is a list rep the bounding box: [x_min, x_max, y_min, y_max]
-    def step(self, dt, bounds): 
-
-        if self.position[0] < self.radius + bounds[0]:
-            self.position[0] = self.radius + bounds[0]
-            self.velocity[0] *= -1
-        if self.position[0] > -self.radius + bounds[1]:
-            self.position[0] = -self.radius + bounds[1]
-            self.velocity[0] *= -1
-        if self.position[1] < self.radius + bounds[2]:
-            self.position[1] = self.radius + bounds[2]
-            self.velocity[1] *= -1
-        if self.position[1] > -self.radius + bounds[3]:
-            self.position[1] = -self.radius + bounds[3]
-            self.velocity[1] *= -1
-
-        self.position += dt*self.velocity
 
 # A particle box represents a group of N gas particles confined
 # within a box of dimensions bounds
 class ParticleBox():
-    def __init__(self, t=0.0, N=25, bounds=[-1.0, 1.0, -1.0, 1.0]):
-        self.__t = t
+    def __init__(self, N=25, bounds=[-1.0, 1.0, -1.0, 1.0]):
+        self.__t = 0.0
         self.__N = N
         self.__bounds = bounds
         self.__particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
@@ -138,8 +121,26 @@ class ParticleBox():
     # when you access positions in animate function: just use list-splicing)
     # Steps the state of the particle box forward by time dt
     # => all particle positions and velocities are updated. 
+    
+    #naively: just run a for loop lol
     def step(self, dt):
-        pass
+        self.t += dt
+        print('%.1fs' % self.t)
+        for particle in self.particle_list:
+            if particle.position[0] < particle.radius + self.bounds[0]:
+                particle.position[0] = particle.radius + self.bounds[0]
+                particle.velocity[0] *= -1
+            if particle.position[0] > -particle.radius + self.bounds[1]:
+                particle.position[0] = -particle.radius + self.bounds[1]
+                particle.velocity[0] *= -1
+            if particle.position[1] < particle.radius + self.bounds[2]:
+                particle.position[1] = particle.radius + self.bounds[2]
+                particle.velocity[1] *= -1
+            if particle.position[1] > -particle.radius + self.bounds[3]:
+                particle.position[1] = -particle.radius + self.bounds[3]
+                particle.velocity[1] *= -1
+
+            particle.position += dt*particle.velocity
 
 
 # Set up figure
@@ -148,6 +149,7 @@ ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
                       xlim=(X_LOWER, X_UPPER), ylim=(Y_LOWER, Y_UPPER))
 
 ax.set_title('Ideal Gas In a Box')
+time_display = ax.text(0.25, 0.2, '', transform=ax.transAxes)
 
 offset = 0.05 # an offset to make particles look like they are actually bouncing off walls
 # TODO: link marker size to box collisions and ensure that regardless which parameter you change,
@@ -158,7 +160,7 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(0.0, 50, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(25, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
@@ -166,21 +168,28 @@ marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
 
 particle_pos, = ax.plot([], [], 'bo', ms=marker_size)
 
+
 dt = 1./30
 
 def init():
     particle_pos.set_data([], [])
-    return particle_pos, 
+    time_display.set_text('')
+    return particle_pos, time_display
 
 def animate(i):
-    particle_pos_x = []
-    particle_pos_y = []
-    for particle in my_box.particle_list:
-        particle.step(dt, my_box.bounds)
-        particle_pos_x.append(particle.position[0])
-        particle_pos_y.append(particle.position[1])
+    global my_box, dt
+    my_box.step(dt)
+    
+    particle_pos_x = [particle.position[0] for particle in my_box.particle_list]
+    particle_pos_y = [particle.position[1] for particle in my_box.particle_list]
+    
     particle_pos.set_data(particle_pos_x, particle_pos_y)
-    return particle_pos,
+    time_display.set_text('time = %.1fs' % my_box.t)
+    # for particle in my_box.particle_list:
+    #     particle.step(dt, my_box.bounds)
+    #     particle_pos_x.append(particle.position[0])
+    #     particle_pos_y.append(particle.position[1])
+    return particle_pos, time_display
 
 anim = animation.FuncAnimation(fig, animate, frames=30, interval=10, blit=True,
                                init_func=init)
