@@ -125,7 +125,8 @@ class ParticleBox():
     #naively: just run a for loop lol
     def step(self, dt):
         self.t += dt
-        print('%.1fs' % self.t)
+        # print('%.1fs' % self.t)
+        # TODO: add particle interactions
         for particle in self.particle_list:
             if particle.position[0] < particle.radius + self.bounds[0]:
                 particle.position[0] = particle.radius + self.bounds[0]
@@ -160,7 +161,7 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(25, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(100, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
