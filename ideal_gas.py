@@ -60,31 +60,40 @@ class ParticleBox():
     def step(self, dt):
         self.t += dt
         # print('%.1fs' % self.t)
-        # initialize a set of unique particle pairs
-        unique = set()
+        # initialize a set of indices of unique particle pairs
+
+        #TODO: rework this section. There has to be an easy way leveraging numpy
+        unique_indices = set()
         for p1 in np.arange(len(self.particle_list)):
             for p2 in np.arange(len(self.particle_list)):
-                if p1 != p2:
+                if p1 != p2 and self.particle_list[p1].collides_with(self.particle_list[p2]):
                     part_pair = frozenset([p1,p2])
-                    if part_pair not in unique:
-                        unique.add(part_pair)
+                    if part_pair not in unique_indices:
+                        unique_indices.add(part_pair)
 
-        # now convert set of frozensets to list of tuples 
-        unique = [tuple(pairs) for pairs in unique]
+        # now convert set of frozensets to list of tuples if unique_indices is 
+        # actually populated with entries, implying collisions have taken place
+        # unique_velocities is...man, this is NOT going to work.   
+        unique_velocities = []
+        if len(unique_indices) != 0:
+            unique_indices = [tuple(pairs) for pairs in unique_indices]
 
-        #loop through unique pairs of particles to find collisions
-        for pair in unique:
-            if pair[0].collides_with(pair[1]):
-                print("collision!")
-                #TODO: now the physics-y bit: update velocities
-                m1 = pair[0].mass
-                m2 = pair[1].mass
+            #loop through unique pairs of particles to find collisions
+            for pair in unique_indices:
+                if self.particle_list[pair[0]].collides_with(self.particle_list[pair[1]]):
+                    print("collision!")
+                    #TODO: now the physics-y bit: update velocities
+                    m1 = self.particle_list[pair[0]].mass
+                    m2 = self.particle_list[pair[1]].mass
 
-                rel_pos = pair[0].state[:2] - pair[1].state[:2]
-                rel_vel = pair[0].state[2:] - pair[1].state[2:]
+                    rel_pos = self.particle_list[pair[0]].state[:2] - self.particle_list[pair[1]].state[:2]
+                    rel_vel = self.particle_list[pair[0]].state[2:] - self.particle_list[pair[1]].state[2:]
 
-                v1_prim = pair[0].state[2:]-2*(m2/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos
-                v2_prim = pair[1].state[2:]+2*(m1/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos 
+                    v1_prim = pair[0].state[2:]-2*(m2/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos
+                    v2_prim = pair[1].state[2:]+2*(m1/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos 
+                    unique_velocities.append((v1_prim, v2_prim))
+            
+
 
 
         for particle in self.particle_list:
