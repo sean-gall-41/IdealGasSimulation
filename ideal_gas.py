@@ -27,40 +27,8 @@ class GasParticle:
         self.init_state = np.asarray(init_state, dtype=float)
         self.state = self.init_state.copy()
 
-    # @property
-    # def mass(self):
-    #     return self.__mass
-
-    # @mass.setter
-    # def mass(self, mass):
-    #     self.__mass = mass
-    
-    # @property
-    # def radius(self):
-    #     return self.__radius
-
-    # @radius.setter
-    # def radius(self, radius):
-    #     self.__radius = radius
-
-    # @property
-    # def position(self):
-    #     return self.__position
-
-    # @position.setter
-    # def position(self, position):
-    #     self.__position = position
-
-    # @property
-    # def velocity(self):
-    #     return self.__velocity
-
-    # @velocity.setter
-    # def velocity(self, velocity):
-    #     self.__velocity = velocity
-
     def __eq__(self, other):
-        return True if self.mass == other.mass and self.radius == other.radius and np.array_equal(self.position, other.position) and np.array_equal(self.velocity and other.velocity) else False
+        return True if self.mass == other.mass and self.radius == other.radius and np.array_equal(self.state, other.state) else False
 
     # predicate function to determine whether the caller collides with
     # the parameter particle
@@ -92,9 +60,23 @@ class ParticleBox():
     def step(self, dt):
         self.t += dt
         # print('%.1fs' % self.t)
-        # for p1 in particle_list:
-        #     for p2 in particle_list:
-        #         if p1
+        # initialize a set of unique particle pairs
+        unique = set()
+        for p1 in self.particle_list:
+            for p2 in self.particle_list:
+                if p1 != p2:
+                    part_pair = frozenset([p1,p2])
+                    if part_pair not in unique:
+                        unique.add(part_pair)
+
+        # now convert set of frozensets to list of tuples 
+        unique = [tuple(pairs) for pairs in unique]
+
+        #loop through unique pairs of particles to find collisions
+        for pair in unique:
+            if pair[0].collides_with(pair[1]):
+                #TODO: now the physics-y bit: change the velocities according to collision param
+
 
         for particle in self.particle_list:
             if particle.state[0] < particle.radius + self.bounds[0]:
