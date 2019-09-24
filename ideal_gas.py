@@ -62,8 +62,8 @@ class ParticleBox():
         # print('%.1fs' % self.t)
         # initialize a set of unique particle pairs
         unique = set()
-        for p1 in self.particle_list:
-            for p2 in self.particle_list:
+        for p1 in np.arange(len(self.particle_list)):
+            for p2 in np.arange(len(self.particle_list)):
                 if p1 != p2:
                     part_pair = frozenset([p1,p2])
                     if part_pair not in unique:
@@ -75,7 +75,16 @@ class ParticleBox():
         #loop through unique pairs of particles to find collisions
         for pair in unique:
             if pair[0].collides_with(pair[1]):
-                #TODO: now the physics-y bit: change the velocities according to collision param
+                print("collision!")
+                #TODO: now the physics-y bit: update velocities
+                m1 = pair[0].mass
+                m2 = pair[1].mass
+
+                rel_pos = pair[0].state[:2] - pair[1].state[:2]
+                rel_vel = pair[0].state[2:] - pair[1].state[2:]
+
+                v1_prim = pair[0].state[2:]-2*(m2/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos
+                v2_prim = pair[1].state[2:]+2*(m1/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos 
 
 
         for particle in self.particle_list:
@@ -112,7 +121,7 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(100, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(10, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
