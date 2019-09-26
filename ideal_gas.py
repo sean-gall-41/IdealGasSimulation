@@ -1,3 +1,4 @@
+from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
@@ -10,7 +11,7 @@ import matplotlib.animation as animation
 #GLOBAL VARIABLES
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
-PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.035
+PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.04
 SCALE_FACTOR = 0.5
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
@@ -36,7 +37,7 @@ class GasParticle:
         D =  np.sqrt((self.state[0] - other.state[0])**2 + 
                      (self.state[1] - other.state[1])**2)
         
-        return True if D < self.radius + other.radius else False
+        return True if D <= self.radius + other.radius else False
 
 
 # A particle box represents a group of N gas particles confined
@@ -52,49 +53,47 @@ class ParticleBox():
                                         -1.0 + np.random.random(), -1.0 + np.random.random()]) 
                                         for i in np.arange(N)])
 
-
     # Steps the state of the particle box forward by time dt
     # => all particle positions and velocities are updated. 
-    
-    #naively: just run a for loop lol
     def step(self, dt):
         self.t += dt
-        # print('%.1fs' % self.t)
-        # initialize a set of indices of unique particle pairs
+        
+        # Somehow very cryptic code?
+        D = squareform(pdist(np.asarray([particle.state[:2] for particle in self.particle_list])))
+        ind1, ind2 = np.where(D <= 2 * PARTICLE_RADIUS)
+        unique = (ind1 < ind2)
+        ind1 = ind1[unique]
+        ind2 = ind2[unique]
 
-        #TODO: rework this section. There has to be an easy way leveraging numpy
-        unique_indices = set()
-        for p1 in np.arange(len(self.particle_list)):
-            for p2 in np.arange(len(self.particle_list)):
-                if p1 != p2 and self.particle_list[p1].collides_with(self.particle_list[p2]):
-                    part_pair = frozenset([p1,p2])
-                    if part_pair not in unique_indices:
-                        unique_indices.add(part_pair)
+        # update velocities of colliding pairs
+        for i1, i2 in zip(ind1, ind2):
+            # mass
+            m1 = self.particle_list[i1].mass
+            m2 = self.particle_list[i2].mass
 
-        # now convert set of frozensets to list of tuples if unique_indices is 
-        # actually populated with entries, implying collisions have taken place
-        # unique_velocities is...man, this is NOT going to work.   
-        unique_velocities = []
-        if len(unique_indices) != 0:
-            unique_indices = [tuple(pairs) for pairs in unique_indices]
+            # location vector
+            r1 = self.particle_list[i1].state[:2]
+            r2 = self.particle_list[i2].state[:2]
 
-            #loop through unique pairs of particles to find collisions
-            for pair in unique_indices:
-                if self.particle_list[pair[0]].collides_with(self.particle_list[pair[1]]):
-                    print("collision!")
-                    #TODO: now the physics-y bit: update velocities
-                    m1 = self.particle_list[pair[0]].mass
-                    m2 = self.particle_list[pair[1]].mass
+            # velocity vector
+            v1 = self.particle_list[i1].state[2:]
+            v2 = self.particle_list[i2].state[2:]
 
-                    rel_pos = self.particle_list[pair[0]].state[:2] - self.particle_list[pair[1]].state[:2]
-                    rel_vel = self.particle_list[pair[0]].state[2:] - self.particle_list[pair[1]].state[2:]
+            # relative location & velocity vectors
+            r_rel = r1 - r2
+            v_rel = v1 - v2
 
-                    v1_prim = pair[0].state[2:]-2*(m2/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos
-                    v2_prim = pair[1].state[2:]+2*(m1/(m1+m2))*(np.dot(rel_vel,rel_pos)/(np.dot(rel_pos,rel_pos)))*rel_pos 
-                    unique_velocities.append((v1_prim, v2_prim))
-            
+            # momentum vector of the center of mass
+            v_cm = (m1 * v1 + m2 * v2) / (m1 + m2)
 
+            # collisions of spheres reflect v_rel over r_rel
+            rr_rel = np.dot(r_rel, r_rel)
+            vr_rel = np.dot(v_rel, r_rel)
+            v_rel = 2 * r_rel * vr_rel / rr_rel - v_rel
 
+            # assign new velocities
+            self.particle_list[i1].state[2:] = v_cm + v_rel * m2 / (m1 + m2)
+            self.particle_list[i2].state[2:] = v_cm - v_rel * m1 / (m1 + m2) 
 
         for particle in self.particle_list:
             if particle.state[0] < particle.radius + self.bounds[0]:
@@ -130,7 +129,7 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(10, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(2, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
