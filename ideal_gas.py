@@ -1,4 +1,5 @@
 from scipy.spatial.distance import pdist, squareform
+from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.animation as animation
@@ -12,7 +13,7 @@ import matplotlib.animation as animation
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
 PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.04
-SCALE_FACTOR = 0.5
+SCALE_FACTOR = 0.75
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
 
@@ -113,29 +114,32 @@ class ParticleBox():
 
 
 # Set up figure
-fig = plt.figure()
-ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
+fig = plt.figure(constrained_layout=True)
+gspec = GridSpec(5,10, figure=fig)
+ax_1 = fig.add_subplot(gspec[:,:5], 
                       xlim=(X_LOWER, X_UPPER), ylim=(Y_LOWER, Y_UPPER))
 
-ax.set_title('Ideal Gas In a Box')
-time_display = ax.text(0.25, 0.2, '', transform=ax.transAxes)
+ax_2 = fig.add_subplot(gspec[3:,5:])
 
-offset = 0.05 # an offset to make particles look like they are actually bouncing off walls
+fig.suptitle('Ideal Gas In a Box')
+time_display = ax_1.text(0.12, 0.05, '', transform=ax_1.transAxes)
+
+offset = 0.06 # an offset to make particles look like they are actually bouncing off walls
 # TODO: link marker size to box collisions and ensure that regardless which parameter you change,
 #       the wall collision behaviour is unchanged (ie balls still look like they hit walls)
 rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+2*offset, 
                      BOX_HEIGHT+2*offset, lw=1.5, ec='k', fc='none')
 
-ax.add_patch(rect)
+ax_1.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(2, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(100, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 #TODO: find correct conversion factor for radius to marker size (in points)
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
-                  / np.diff(ax.get_xbound())[0])
+                  / np.diff(ax_1.get_xbound())[0])
 
-particle_pos, = ax.plot([], [], 'bo', ms=marker_size)
+particle_pos, = ax_1.plot([], [], 'bo', ms=marker_size)
 
 
 dt = 1./30
