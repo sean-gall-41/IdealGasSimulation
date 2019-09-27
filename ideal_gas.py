@@ -159,7 +159,7 @@ def animate(i):
     time_display.set_text('time = %.1fs' % my_box.t)
     return particle_pos, time_display
 
-anim = animation.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
+anim = animation.FuncAnimation(fig, animate, frames=30, interval=5, blit=True,
                                init_func=init)
 
 plt.show()        

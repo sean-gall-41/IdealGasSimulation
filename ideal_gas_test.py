@@ -116,8 +116,8 @@ ax_1.add_patch(rect)
 np.random.seed(0)
 my_box = ParticleBox(2, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
-my_box.particle_list[0].state = np.asarray([-1.0, 0.019, 1.0, 0.0])
-my_box.particle_list[1].state = np.asarray([1.0, -0.019, -1.0, 0.0])
+my_box.particle_list[0].state = np.asarray([-1.0, 0.01, 1.0, 0.0])
+my_box.particle_list[1].state = np.asarray([1.0, -0.01, -1.0, 0.0])
 
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth() 
                   / np.diff(ax_1.get_xbound())[0])
