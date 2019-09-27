@@ -1,20 +1,13 @@
 from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib.animation as animation
-
-# GLOBAL TODO: Ensure that changing certain parameters (particle radius, box dimensions, etc.)
-# is robust ie that changes to these parameters do not change eg how close it looks like balls 
-# get to walls. This requires some parameters to be proportional to each other (eg particle radius
-# with marker size)
-
-#GLOBAL VARIABLES
+import matplotlib.animation as ani
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
 PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.04
 SCALE_FACTOR = 0.75
-BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
-BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
+BOX_WIDTH = SCALE_FACTOR*(X_UPPER - X_LOWER)
+BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER - Y_LOWER)
 
 class GasParticle:
     """docstring for GasParticle."""
@@ -39,7 +32,6 @@ class GasParticle:
         
         return True if D <= self.radius + other.radius else False
 
-
 # A particle box represents a group of N gas particles confined
 # within a box of dimensions bounds
 class ParticleBox():
@@ -58,6 +50,8 @@ class ParticleBox():
     def step(self, dt):
         self.t += dt
         
+        if self.particle_list[0].collides_with(self.particle_list[1]):
+            print("collision!")
         # Somehow very cryptic code?
         D = squareform(pdist(np.asarray([particle.state[:2] for particle in self.particle_list])))
         ind1, ind2 = np.where(D <= 2 * PARTICLE_RADIUS)
@@ -111,33 +105,22 @@ class ParticleBox():
 
             particle.state[:2] += dt*particle.state[2:]
 
-
-# Set up figure
 fig = plt.figure()
-fig.suptitle('Ideal Gas In a Box')
-ax_1 = fig.add_axes([0.05,0.2,0.5,0.65], xlim=(X_LOWER, X_UPPER), 
-                    ylim=(Y_LOWER, Y_UPPER))
-
+fig.suptitle('Ideal Gas In A Box')
+ax_1 = fig.add_axes([0.05,0.2,0.5,0.65], xlim=(X_LOWER, X_UPPER), ylim=(Y_LOWER, Y_UPPER))
 time_display = ax_1.text(0.12, 0.05, '', transform=ax_1.transAxes)
-
-ax_2 = fig.add_axes([0.6, 0.45,0.35,0.2])
-
-
-offset = 0.06 # an offset to make particles look like they are actually bouncing off walls
-# TODO: link marker size to box collisions and ensure that regardless which parameter you change,
-#       the wall collision behaviour is unchanged (ie balls still look like they hit walls)
-rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+2*offset, 
-                     BOX_HEIGHT+2*offset, lw=1.5, ec='k', fc='none')
-
+rect = plt.Rectangle((-0.5*BOX_WIDTH, -0.5*BOX_HEIGHT), BOX_WIDTH, 
+                     BOX_HEIGHT, lw=1.5, ec='k', fc='none')
 ax_1.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(100, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(2, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
-#TODO: find correct conversion factor for radius to marker size (in points)
-marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
+my_box.particle_list[0].state = np.asarray([-1.0, 0.019, 1.0, 0.0])
+my_box.particle_list[1].state = np.asarray([1.0, -0.019, -1.0, 0.0])
+
+marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth() 
                   / np.diff(ax_1.get_xbound())[0])
-
 particle_pos, = ax_1.plot([], [], 'bo', ms=marker_size)
 
 
@@ -150,6 +133,7 @@ def init():
 
 def animate(i):
     global my_box, dt
+    
     my_box.step(dt)
     
     particle_pos_x = [particle.state[0] for particle in my_box.particle_list]
@@ -159,10 +143,10 @@ def animate(i):
     time_display.set_text('time = %.1fs' % my_box.t)
     return particle_pos, time_display
 
-anim = animation.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
+anim = ani.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
                                init_func=init)
 
-plt.show()        
+ax_2 = fig.add_axes([0.6, 0.45,0.35,0.2])
 
 
-
+plt.show()
