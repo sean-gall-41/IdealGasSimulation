@@ -58,7 +58,6 @@ class ParticleBox():
     def __init__(self, N=25, color='b', bounds=[-1.0, 1.0, -1.0, 1.0]):
         self.t = 0.0
         self.N = N
-        self.color = color # Should the box itsef even have this attribute?
         self.bounds = bounds
         self.particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, color,
                                         [randomReal(-0.5*BOX_WIDTH, 0.5*BOX_WIDTH), 
@@ -74,7 +73,7 @@ class ParticleBox():
             raise OutOfBoundsError 
         
         self.N += 1
-        self.particle_list.append(particle)
+        np.append(self.particle_list, particle)
 
     # Steps the state of the particle box forward by time dt
     # => all particle positions and velocities are updated. 
@@ -146,7 +145,7 @@ time_display = ax_1.text(0.12, 0.05, '', transform=ax_1.transAxes)
 ax_2 = fig.add_axes([0.6, 0.45,0.35,0.2])
 
 
-offset = 0.06 # an offset to make particles look like they are actually bouncing off walls
+offset = 0.15 # an offset to make particles look like they are actually bouncing off walls
 # TODO: link marker size to box collisions and ensure that regardless which parameter you change,
 #       the wall collision behaviour is unchanged (ie balls still look like they hit walls)
 rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+2*offset, 
@@ -155,44 +154,55 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax_1.add_patch(rect)
 
 np.random.seed(0)
-blue_box = ParticleBox(100, 'b', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
-red_box = ParticleBox(1, 'r', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+particle_box = ParticleBox(100, 'b', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
-#TODO: find correct conversion factor for radius to marker size (in points)
-marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
-                / np.diff(ax_1.get_xbound())[0])
+try:
+    special_particle = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, 'r', 
+                                    [randomReal(-0.5*BOX_WIDTH, 0.5*BOX_WIDTH), 
+                                    randomReal(-0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT),
+                                    randomReal(-5, 5), randomReal(-5, 5)])
+    particle_box.add_particle(special_particle)
 
-blue_particle_pos, = ax_1.plot([], [],'bo', markersize=marker_size)
-red_particle_pos, = ax_1.plot([], [], 'ro', markersize=marker_size)
+    # red_box = ParticleBox(1, 'r', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
-dt = 1./30
+    #TODO: find correct conversion factor for radius to marker size (in points)
+    marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
+                    / np.diff(ax_1.get_xbound())[0])
 
-def init():
-    blue_particle_pos.set_data([], [])
-    red_particle_pos.set_data([], [])
-    time_display.set_text('')
-    return blue_particle_pos, red_particle_pos, time_display
+    blue_particle_pos, = ax_1.plot([], [],'bo', markersize=marker_size)
+    red_particle_pos, = ax_1.plot([], [], 'ro', markersize=marker_size)
 
-def animate(i):
-    global blue_box, red_box, dt
-    blue_box.step(dt)
-    red_box.step(dt)
-    
-    blue_particle_pos_x = [particle.state[0] for particle in blue_box.particle_list]
-    blue_particle_pos_y = [particle.state[1] for particle in blue_box.particle_list]
-    
-    red_particle_pos_x = [particle.state[0] for particle in red_box.particle_list]
-    red_particle_pos_y = [particle.state[1] for particle in red_box.particle_list]
+    dt = 1./30
 
-    blue_particle_pos.set_data(blue_particle_pos_x, blue_particle_pos_y)
-    red_particle_pos.set_data(red_particle_pos_x, red_particle_pos_y)
-    time_display.set_text('time = %.1fs' % blue_box.t)
-    return blue_particle_pos, red_particle_pos, time_display
+    def init():
+        blue_particle_pos.set_data([], [])
+        red_particle_pos.set_data([], [])
+        time_display.set_text('')
+        return blue_particle_pos, red_particle_pos, time_display
 
-anim = animation.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
-                            init_func=init)
+    def animate(i):
+        global particle_box, dt
+        particle_box.step(dt)
+        # red_box.step(dt)
 
-plt.show()
+        blue_particle_pos_x = [particle_box.particle_list[i].state[0] for i in np.arange(particle_box.particle_list.size - 1)]
+        blue_particle_pos_y = [particle_box.particle_list[i].state[1] for i in np.arange(particle_box.particle_list.size - 1)]
+        
+        red_particle_pos_x = [particle_box.particle_list[particle_box.particle_list.size - 1].state[0]]
+        red_particle_pos_y = [particle_box.particle_list[particle_box.particle_list.size - 1].state[1]]
+
+        blue_particle_pos.set_data(blue_particle_pos_x, blue_particle_pos_y)
+        red_particle_pos.set_data(red_particle_pos_x, red_particle_pos_y)
+        time_display.set_text('time = %.1fs' % particle_box.t)
+        return blue_particle_pos, red_particle_pos, time_display
+
+    anim = animation.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
+                                init_func=init)
+
+    plt.show()
+
+except OutOfBoundsError:
+    print('Special particle is out of bounds!')
 
 
         
