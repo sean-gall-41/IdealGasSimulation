@@ -1,6 +1,8 @@
+import numpy as np
 from scipy.spatial.distance import pdist, squareform
 import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib.patches as patches
+import matplotlib.path as path
 import matplotlib.animation as animation
 
 # GLOBAL TODO: Ensure that changing certain parameters (particle radius, box dimensions, etc.)
@@ -18,6 +20,12 @@ BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
 
 def randomReal(a, b):
     return (b - a) * np.random.random() + a
+
+# given two 1-D arrays, representing x, y components of 
+# multiple vectors, computes the norm of each vector, returning a list
+# of those norms
+def lengths(coord):
+    return np.sqrt(coord[:,0]**2 + coord[:,1]**2)
 
 class Error(Exception):
     """Base class for other custom-defined exceptions (if the need arises)"""
@@ -73,7 +81,7 @@ class ParticleBox():
             raise OutOfBoundsError 
         
         self.N += 1
-        np.append(self.particle_list, particle)
+        self.particle_list = np.append(self.particle_list, [particle])
 
     # Steps the state of the particle box forward by time dt
     # => all particle positions and velocities are updated. 
@@ -142,9 +150,6 @@ ax_1 = fig.add_axes([0.05,0.2,0.5,0.65], xlim=(X_LOWER, X_UPPER),
 
 time_display = ax_1.text(0.12, 0.05, '', transform=ax_1.transAxes)
 
-ax_2 = fig.add_axes([0.6, 0.45,0.35,0.2])
-
-
 offset = 0.15 # an offset to make particles look like they are actually bouncing off walls
 # TODO: link marker size to box collisions and ensure that regardless which parameter you change,
 #       the wall collision behaviour is unchanged (ie balls still look like they hit walls)
@@ -154,7 +159,8 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax_1.add_patch(rect)
 
 np.random.seed(0)
-particle_box = ParticleBox(100, 'b', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+N = 499
+particle_box = ParticleBox(N, 'b', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 try:
     special_particle = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, 'r', 
@@ -163,6 +169,32 @@ try:
                                     randomReal(-5, 5), randomReal(-5, 5)])
     particle_box.add_particle(special_particle)
 
+    ax_2 = fig.add_axes([0.6, 0.45,0.35,0.2])
+    velocity_components = np.array([particle.state[2:] for particle in particle_box.particle_list])
+    velocities = lengths(velocity_components)
+    n, bins = np.histogram(velocities, int(0.5*N))
+    
+    # get the corners of the rectangles for the histogram
+    left = np.array(bins[:-1])
+    right = np.array(bins[1:])
+    bottom = np.zeros(len(left))
+    top = bottom + n
+    nrects = len(left)
+
+    nverts = nrects * (1 + 3 + 1)
+    verts = np.zeros((nverts, 2))
+    codes = np.ones(nverts, int) * path.Path.LINETO
+    codes[0::5] = path.Path.MOVETO
+    codes[4::5] = path.Path.CLOSEPOLY
+    verts[0::5, 0] = left
+    verts[0::5, 1] = bottom
+    verts[1::5, 0] = left
+    verts[1::5, 1] = top
+    verts[2::5, 0] = right
+    verts[2::5, 1] = top
+    verts[3::5, 0] = right
+    verts[3::5, 1] = bottom
+    
     # red_box = ParticleBox(1, 'r', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
     #TODO: find correct conversion factor for radius to marker size (in points)
@@ -174,14 +206,15 @@ try:
 
     dt = 1./30
 
-    def init():
-        blue_particle_pos.set_data([], [])
-        red_particle_pos.set_data([], [])
-        time_display.set_text('')
-        return blue_particle_pos, red_particle_pos, time_display
+    # def init():
+    #     blue_particle_pos.set_data([], [])
+    #     red_particle_pos.set_data([], [])
+    #     time_display.set_text('')
+    #     return blue_particle_pos, red_particle_pos, time_display
 
+    patch = None
     def animate(i):
-        global particle_box, dt
+        global particle_box, dt, velocity_components, velocities
         particle_box.step(dt)
         # red_box.step(dt)
 
@@ -194,10 +227,26 @@ try:
         blue_particle_pos.set_data(blue_particle_pos_x, blue_particle_pos_y)
         red_particle_pos.set_data(red_particle_pos_x, red_particle_pos_y)
         time_display.set_text('time = %.1fs' % particle_box.t)
-        return blue_particle_pos, red_particle_pos, time_display
 
-    anim = animation.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
-                                init_func=init)
+        velocity_components = np.array([particle.state[2:] for particle in particle_box.particle_list])
+        velocities = lengths(velocity_components)
+
+        n, bins = np.histogram(velocities, int(0.5*N))
+        top = bottom + n
+        verts[1::5, 1] = top
+        verts[2::5, 1] = top
+
+        #TODO: Some odd issue of returning a list here..
+        return blue_particle_pos, red_particle_pos, time_display, patch
+
+    barpath = path.Path(verts, codes)
+    patch = patches.PathPatch(barpath, facecolor='green', edgecolor='yellow', alpha=0.5)
+    ax_2.add_patch(patch)
+    ax_2.set_xlim(left[0], right[-1])
+    ax_2.set_ylim(bottom.min(), top.max())
+    
+    anim = animation.FuncAnimation(fig, animate, frames=30, interval=30, blit=True)
+    """,init_func=init)"""
 
     plt.show()
 
