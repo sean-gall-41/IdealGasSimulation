@@ -19,6 +19,7 @@ def randomReal(a, b):
        half open interval [a, b)"""
     return (b - a) * np.random.random() + a
 
+
 def lengths(coord):
     """Given a numpy array of coordinates (in our case with
        shape (N, 2) return an array of the magnitude of the 
@@ -26,13 +27,16 @@ def lengths(coord):
        metric"""
     return np.sqrt(coord[:,0]**2 + coord[:,1]**2)
 
+
 class Error(Exception):
     """Base class for other custom-defined exceptions (if the need arises)"""
     pass
 
+
 class OutOfBoundsError(Error):
     """Raised when something is out of bounds (like a particle)"""
     pass
+
 
 class GasParticle:
     """docstring for GasParticle."""
@@ -85,7 +89,6 @@ class ParticleBox():
     # => all particle positions and velocities are updated. 
     def step(self, dt):
         self.t += dt
-        
         # Somehow very cryptic code?
         D = squareform(pdist(np.asarray([particle.state[:2] for particle in self.particle_list])))
         ind1, ind2 = np.where(D <= 2 * PARTICLE_RADIUS)
