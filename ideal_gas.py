@@ -5,7 +5,7 @@ import matplotlib.patches as patches
 import matplotlib.path as path
 import matplotlib.animation as animation
 
-#GLOBAL VARIABLES
+# GLOBAL VARIABLES
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
 PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.04
@@ -46,7 +46,9 @@ class GasParticle:
         self.color = color
 
     def __eq__(self, other):
-        return True if self.mass == other.mass and self.radius == other.radius and np.array_equal(self.state, other.state) else False
+        return True if self.mass == other.mass and \
+                   self.radius == other.radius and \
+                   np.array_equal(self.state, other.state) else False
 
     # predicate function to determine whether the caller collides with
     # the parameter particle
@@ -76,7 +78,6 @@ class ParticleBox():
            particle.state[1] - particle.radius < self.bounds[2] or \
            particle.state[1] + particle.radius > self.bounds[3]:
             raise OutOfBoundsError 
-        
         self.N += 1
         self.particle_list = np.append(self.particle_list, [particle])
 
