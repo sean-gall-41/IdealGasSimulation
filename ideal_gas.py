@@ -157,14 +157,15 @@ offset = 0.15  # an offset to make particles look like they are actually bouncin
 # the wall collision behaviour is unchanged (ie balls still look like they
 # hit walls)
 rect = plt.Rectangle((-0.5 * BOX_WIDTH - offset, -0.5 * BOX_HEIGHT - offset),
-                     BOX_WIDTH + 2 * offset, BOX_HEIGHT + 2 * offset, lw=1.5, ec='k', fc='none')
+                     BOX_WIDTH + 2 * offset, BOX_HEIGHT + 2 * offset, lw=1.5,
+                     ec='k', fc='none')
 
 ax_1.add_patch(rect)
 
 np.random.seed(0)
 N = 999
-particle_box = ParticleBox(
-    N, 'b', [-0.5 * BOX_WIDTH, 0.5 * BOX_WIDTH, -0.5 * BOX_HEIGHT, 0.5 * BOX_HEIGHT])
+particle_box = ParticleBox(N, 'b', [-0.5 * BOX_WIDTH, 0.5 * BOX_WIDTH,
+                                    -0.5 * BOX_HEIGHT, 0.5 * BOX_HEIGHT])
 
 try:
     special_particle_radius = PARTICLE_RADIUS
@@ -175,10 +176,8 @@ try:
                                                0.5 * BOX_WIDTH),
                                     randomReal(-0.5 * BOX_HEIGHT,
                                                0.5 * BOX_HEIGHT),
-                                       randomReal(-5,
-                                                  5),
-                                       randomReal(-5,
-                                                  5)])
+                                    randomReal(-5, 5),
+                                    randomReal(-5, 5)])
     particle_box.add_particle(special_particle)
 
     ax_2 = fig.add_axes([0.6, 0.45, 0.35, 0.2])
@@ -208,12 +207,10 @@ try:
     verts[3::5, 0] = right
     verts[3::5, 1] = bottom
 
-    # red_box = ParticleBox(1, 'r', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
-
     # TODO: find correct conversion factor for radius to marker size (in
     # points)
-    marker_size = int(fig.dpi * 2 * PARTICLE_RADIUS * fig.get_figwidth()
-                      / np.diff(ax_1.get_xbound())[0])
+    marker_size = int(fig.dpi * 2 * PARTICLE_RADIUS * fig.get_figwidth() /
+                      np.diff(ax_1.get_xbound())[0])
     blue_particle_pos, = ax_1.plot([], [], 'bo', markersize=marker_size)
     marker_size = int(
         fig.dpi *
@@ -266,11 +263,8 @@ try:
         return blue_particle_pos, red_particle_pos, time_display, patch
 
     barpath = path.Path(verts, codes)
-    patch = patches.PathPatch(
-        barpath,
-        facecolor='green',
-        edgecolor='yellow',
-        alpha=0.5)
+    patch = patches.PathPatch(barpath, facecolor='green', edgecolor='yellow',
+                              alpha=0.5)
     ax_2.add_patch(patch)
     ax_2.set_xlim(left[0], right[-1])
     ax_2.set_ylim(bottom.min(), top.max())
