@@ -5,11 +5,6 @@ import matplotlib.patches as patches
 import matplotlib.path as path
 import matplotlib.animation as animation
 
-# GLOBAL TODO: Ensure that changing certain parameters (particle radius, box dimensions, etc.)
-# is robust ie that changes to these parameters do not change eg how close it looks like balls 
-# get to walls. This requires some parameters to be proportional to each other (eg particle radius
-# with marker size)
-
 #GLOBAL VARIABLES
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
@@ -18,13 +13,17 @@ SCALE_FACTOR = 0.75
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER-X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER-Y_LOWER)
 
+
 def randomReal(a, b):
+    """returns a randomly distributed real number in the 
+       half open interval [a, b)"""
     return (b - a) * np.random.random() + a
 
-# given two 1-D arrays, representing x, y components of 
-# multiple vectors, computes the norm of each vector, returning a list
-# of those norms
 def lengths(coord):
+    """Given a numpy array of coordinates (in our case with
+       shape (N, 2) return an array of the magnitude of the 
+       vectors the coordinates represent, in the usual Euclidean
+       metric"""
     return np.sqrt(coord[:,0]**2 + coord[:,1]**2)
 
 class Error(Exception):
@@ -32,14 +31,12 @@ class Error(Exception):
     pass
 
 class OutOfBoundsError(Error):
-    """Raised when something is out of bounds"""
+    """Raised when something is out of bounds (like a particle)"""
     pass
 
 class GasParticle:
     """docstring for GasParticle."""
 
-    """To understand how we are going to initialize our ball object, 
-    we need to understand how to plot artists in matplotlib"""
     def __init__(self, mass = PARTICLE_MASS, radius = PARTICLE_RADIUS,
                  color = 'b', init_state = [0.0, 0.0, 0.0, 0.0]):
         self.mass = mass
@@ -159,11 +156,12 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH-offset, -0.5*BOX_HEIGHT-offset), BOX_WIDTH+
 ax_1.add_patch(rect)
 
 np.random.seed(0)
-N = 499
+N = 999
 particle_box = ParticleBox(N, 'b', [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
-try:
-    special_particle = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, 'r', 
+try:    
+    special_particle_radius = PARTICLE_RADIUS
+    special_particle = GasParticle(PARTICLE_MASS, special_particle_radius, 'r', 
                                     [randomReal(-0.5*BOX_WIDTH, 0.5*BOX_WIDTH), 
                                     randomReal(-0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT),
                                     randomReal(-5, 5), randomReal(-5, 5)])
@@ -200,8 +198,9 @@ try:
     #TODO: find correct conversion factor for radius to marker size (in points)
     marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth()
                     / np.diff(ax_1.get_xbound())[0])
-
     blue_particle_pos, = ax_1.plot([], [],'bo', markersize=marker_size)
+    marker_size = int(fig.dpi*2*special_particle_radius*fig.get_figwidth()
+                    / np.diff(ax_1.get_xbound())[0])
     red_particle_pos, = ax_1.plot([], [], 'ro', markersize=marker_size)
 
     dt = 1./30
