@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
+from scipy import optimize
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import matplotlib.path as path
@@ -30,6 +31,10 @@ def lengths(coord):
        vectors the coordinates represent, in the usual Euclidean
        metric"""
     return np.sqrt(coord[:, 0]**2 + coord[:, 1]**2)
+
+
+def MaxWell2D(data, a, b):
+    return a * data * np.exp(b * data**2)
 
 
 class Error(Exception):
@@ -194,7 +199,6 @@ try:
     velocity_components = np.array(
         [particle.state[2:] for particle in particle_box.particle_list])
     velocities = lengths(velocity_components)
-
     # Assume total energy of the system is conserved, calculate based
     # off initial velocities
     total_energy = 0.5 * PARTICLE_MASS * sum(velocities**2)
@@ -209,9 +213,18 @@ try:
         np.exp(-0.5 * PARTICLE_MASS * beta * veloc_range**2) * \
         (max(veloc_range)-min(veloc_range)) / len(veloc_range)
 
+    # deltaV = (max(veloc_range)-min(veloc_range)) / len(veloc_range)
+    # a = beta * PARTICLE_MASS * deltaV
+    # b = -0.5 * PARTICLE_MASS * beta
+
     ax_2.plot(veloc_range, boltzmann_dist, 'b-')
 
     n, bins = np.histogram(velocities, int(0.65 * N))
+    bin_centers = np.array([
+        0.5 * (bins[i] + bins[i+1]) for i in range(len(bins)-1)])
+    params, params_covariance = optimize.curve_fit(MaxWell2D, bin_centers, n,
+                                                   p0=[0.05 * 1.E-1, -5.E-2])
+    ax_2.plot(veloc_range, MaxWell2D(veloc_range, params[0], params[1]), 'r-')
     # Going to histogram probability to be in a velocity range, rather than
     # histogram number of particles in a velocity range
     n = n/N
