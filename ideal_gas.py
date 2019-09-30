@@ -137,6 +137,9 @@ class ParticleBox():
             # assign new velocities
             self.particle_list[i1].state[2:] = v_cm + v_rel * m2 / (m1 + m2)
             self.particle_list[i2].state[2:] = v_cm - v_rel * m1 / (m1 + m2)
+        # TODO: re-write bounds checks to fit above loop variables so
+        # as to fit everything within one loop (though it is no less efficient
+        # do this for readability
 
         # bounds check to ensure particles bounce off walls
         for particle in self.particle_list:
@@ -152,8 +155,9 @@ class ParticleBox():
             if particle.state[1] > -particle.radius + self.bounds[3]:
                 particle.state[1] = -particle.radius + self.bounds[3]
                 particle.state[3] *= -1
-
+            # update particle positions after collisions with walls
             particle.state[:2] += dt * particle.state[2:]
+        # Update internal clock
         self.t += dt
 
 
@@ -195,9 +199,12 @@ try:
                                     randomReal(-5, 5)])
     particle_box.add_particle(special_particle)
 
+    # add an axis to the figure for the velocity distribution plots
     ax_2 = fig.add_axes([0.6, 0.45, 0.35, 0.2])
+    # obtain velocity components for all N particles
     velocity_components = np.array(
         [particle.state[2:] for particle in particle_box.particle_list])
+    # Create array of speeds of particles
     velocities = lengths(velocity_components)
     # Assume total energy of the system is conserved, calculate based
     # off initial velocities
@@ -209,6 +216,10 @@ try:
     veloc_range = np.linspace(0.0, max(velocities), 500)
 
     # TODO: fix theoretic calculation of maxwell dist for 2D
+    # NOTE: what are you actually calculating: probability to be
+    # in velocity range v, v+dv or the number in that range? Does
+    # it matter as long as you are consistent? Why then is the
+    # theoretical plot scaling abnormally away from the experimental?
     boltzmann_dist = beta * PARTICLE_MASS * veloc_range * \
         np.exp(-0.5 * PARTICLE_MASS * beta * veloc_range**2) * \
         (max(veloc_range)-min(veloc_range)) / len(veloc_range)
@@ -217,13 +228,19 @@ try:
     # a = beta * PARTICLE_MASS * deltaV
     # b = -0.5 * PARTICLE_MASS * beta
 
+    # Plot the theoretical distribution
     ax_2.plot(veloc_range, boltzmann_dist, 'b-')
 
+    # create the histogram values and bins for experimental velocity dist
     n, bins = np.histogram(velocities, int(0.65 * N))
+    # obtain list of bin centers in order to fit the above rayleigh dist
+    # for x and y of the same size
     bin_centers = np.array([
         0.5 * (bins[i] + bins[i+1]) for i in range(len(bins)-1)])
     params, params_covariance = optimize.curve_fit(MaxWell2D, bin_centers, n,
                                                    p0=[0.05 * 1.E-1, -5.E-2])
+    # plot the resultant fit TODO: fix the model and maybe initial guess,
+    # obtaining poor fit
     ax_2.plot(veloc_range, MaxWell2D(veloc_range, params[0], params[1]), 'r-')
     # Going to histogram probability to be in a velocity range, rather than
     # histogram number of particles in a velocity range
