@@ -8,10 +8,14 @@ import matplotlib.animation as animation
 # GLOBAL VARIABLES
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
-PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.04
+PARTICLE_MASS, PARTICLE_RADIUS = 1.2E-20, 0.07
 SCALE_FACTOR = 0.75
 BOX_WIDTH = SCALE_FACTOR * (X_UPPER - X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR * (Y_UPPER - Y_LOWER)
+# NOTE: if we are going to use SI units, have to be consistent throughout,
+# so if I give Boltzmann's constant as 1.38064852E-23 m^2kgs^-2K^- then
+# everything else must match.
+KB = 1.38064852E-23
 
 
 def randomReal(a, b):
@@ -49,9 +53,12 @@ class GasParticle:
         self.state = self.init_state.copy()
         self.color = color
 
+    # debating whether to define equality in terms of intrinsic properties
+    # like mass, radius, and color, rather than state, or include state.
     def __eq__(self, other):
         return True if self.mass == other.mass and \
             self.radius == other.radius and \
+            self.color == other.color and \
             np.array_equal(self.state, other.state) else False
 
     # predicate function to determine whether the caller collides with
@@ -70,11 +77,11 @@ class ParticleBox():
         self.t = 0.0
         self.N = N
         self.bounds = bounds
-        self.particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, color,
-                                                   [randomReal(-0.5 * BOX_WIDTH, 0.5 * BOX_WIDTH),
-                                                    randomReal(-0.5 * BOX_HEIGHT, 0.5 * BOX_HEIGHT),
-                                                    randomReal(-5, 5), randomReal(-5, 5)])
-                                       for i in np.arange(N)])
+        self.particle_list = np.array(
+            [GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, color, [
+                randomReal(-0.5 * BOX_WIDTH, 0.5 * BOX_WIDTH),
+                randomReal(-0.5 * BOX_HEIGHT, 0.5 * BOX_HEIGHT),
+                randomReal(-5, 5), randomReal(-5, 5)]) for i in np.arange(N)])
 
     def add_particle(self, particle):
         if particle.state[0] - particle.radius < self.bounds[0] or \
@@ -88,10 +95,9 @@ class ParticleBox():
     # Steps the state of the particle box forward by time dt
     # => all particle positions and velocities are updated.
     def step(self, dt):
-        self.t += dt
-        # Somehow very cryptic code?
-        D = squareform(
-            pdist(np.asarray([particle.state[:2] for particle in self.particle_list])))
+        # Select only those particles undergoing collisions
+        D = squareform(pdist(np.asarray([particle.state[:2] for particle in
+                       self.particle_list])))
         ind1, ind2 = np.where(D <= 2 * PARTICLE_RADIUS)
         unique = (ind1 < ind2)
         ind1 = ind1[unique]
@@ -127,6 +133,7 @@ class ParticleBox():
             self.particle_list[i1].state[2:] = v_cm + v_rel * m2 / (m1 + m2)
             self.particle_list[i2].state[2:] = v_cm - v_rel * m1 / (m1 + m2)
 
+        # bounds check to ensure particles bounce off walls
         for particle in self.particle_list:
             if particle.state[0] < particle.radius + self.bounds[0]:
                 particle.state[0] = particle.radius + self.bounds[0]
@@ -142,6 +149,7 @@ class ParticleBox():
                 particle.state[3] *= -1
 
             particle.state[:2] += dt * particle.state[2:]
+        self.t += dt
 
 
 # Set up figure
@@ -150,24 +158,26 @@ fig.suptitle('Ideal Gas In a Box')
 ax_1 = fig.add_axes([0.05, 0.2, 0.5, 0.65], xlim=(X_LOWER, X_UPPER),
                     ylim=(Y_LOWER, Y_UPPER))
 
+# set up simulation time dispaly
 time_display = ax_1.text(0.12, 0.05, '', transform=ax_1.transAxes)
 
-offset = 0.15  # an offset to make particles look like they are actually bouncing off walls
-# TODO: link marker size to box collisions and ensure that regardless which parameter you change,
-# the wall collision behaviour is unchanged (ie balls still look like they
-# hit walls)
+# an offset to make particles look like they are actually bouncing off walls
+offset = 0.1
 rect = plt.Rectangle((-0.5 * BOX_WIDTH - offset, -0.5 * BOX_HEIGHT - offset),
                      BOX_WIDTH + 2 * offset, BOX_HEIGHT + 2 * offset, lw=1.5,
                      ec='k', fc='none')
 
 ax_1.add_patch(rect)
 
+# initialize random seed for consistent results for debug
 np.random.seed(0)
 N = 999
 particle_box = ParticleBox(N, 'b', [-0.5 * BOX_WIDTH, 0.5 * BOX_WIDTH,
                                     -0.5 * BOX_HEIGHT, 0.5 * BOX_HEIGHT])
 
 try:
+    # add special particle to our box for debugging as well as future
+    # studies of Brownian drift perhaps
     special_particle_radius = PARTICLE_RADIUS
     special_particle = GasParticle(PARTICLE_MASS,
                                    special_particle_radius,
@@ -184,7 +194,27 @@ try:
     velocity_components = np.array(
         [particle.state[2:] for particle in particle_box.particle_list])
     velocities = lengths(velocity_components)
-    n, bins = np.histogram(velocities, int(0.5 * N))
+
+    # Assume total energy of the system is conserved, calculate based
+    # off initial velocities
+    total_energy = 0.5 * PARTICLE_MASS * sum(velocities**2)
+    # NOTE: total_energy = 85.98714633280777 with seed 0
+    beta = N / total_energy  # from ideal gas energy temperature relation
+
+    # velocities range to plot theoretical maxwell dist against
+    veloc_range = np.linspace(0.0, max(velocities), 500)
+
+    # TODO: fix theoretic calculation of maxwell dist for 2D
+    boltzmann_dist = beta * PARTICLE_MASS * veloc_range * \
+        np.exp(-0.5 * PARTICLE_MASS * beta * veloc_range**2) * \
+        (max(veloc_range)-min(veloc_range)) / len(veloc_range)
+
+    ax_2.plot(veloc_range, boltzmann_dist, 'b-')
+
+    n, bins = np.histogram(velocities, int(0.65 * N))
+    # Going to histogram probability to be in a velocity range, rather than
+    # histogram number of particles in a velocity range
+    n = n/N
 
     # get the corners of the rectangles for the histogram
     left = np.array(bins[:-1])
@@ -193,6 +223,7 @@ try:
     top = bottom + n
     nrects = len(left)
 
+    # Now indicate where the bounds of the rectangles are
     nverts = nrects * (1 + 3 + 1)
     verts = np.zeros((nverts, 2))
     codes = np.ones(nverts, int) * path.Path.LINETO
@@ -210,17 +241,11 @@ try:
     # TODO: find correct conversion factor for radius to marker size (in
     # points)
     marker_size = int(fig.dpi * 2 * PARTICLE_RADIUS * fig.get_figwidth() /
-                      np.diff(ax_1.get_xbound())[0])
+                      np.diff(ax_1.get_xbound())[0])-4
     blue_particle_pos, = ax_1.plot([], [], 'bo', markersize=marker_size)
-    marker_size = int(
-        fig.dpi *
-        2 *
-        special_particle_radius *
-        fig.get_figwidth() /
-        np.diff(
-            ax_1.get_xbound())[0])
     red_particle_pos, = ax_1.plot([], [], 'ro', markersize=marker_size)
 
+    # Time interval of one second
     dt = 1. / 30
 
     # def init():
@@ -229,22 +254,29 @@ try:
     #     time_display.set_text('')
     #     return blue_particle_pos, red_particle_pos, time_display
 
+    # Patch will later be a path patch
     patch = None
 
+    # the function called for FuncAnimate. In charge of stepping simulation
+    # forward one time-step, which involves calculating new positions and
+    # velocities, plotting positions, calculating speeds, then histogramming
+    # them
     def animate(i):
         global particle_box, dt, velocity_components, velocities
         particle_box.step(dt)
         # red_box.step(dt)
 
-        blue_particle_pos_x = [particle_box.particle_list[i].state[0]
-                               for i in np.arange(particle_box.particle_list.size - 1)]
-        blue_particle_pos_y = [particle_box.particle_list[i].state[1]
-                               for i in np.arange(particle_box.particle_list.size - 1)]
+        blue_particle_pos_x = [particle_box.particle_list[i].state[0] for i in
+                               np.arange(particle_box.particle_list.size - 1)]
+        blue_particle_pos_y = [particle_box.particle_list[i].state[1] for i in
+                               np.arange(particle_box.particle_list.size - 1)]
 
         red_particle_pos_x = [
-            particle_box.particle_list[particle_box.particle_list.size - 1].state[0]]
+            particle_box.particle_list[
+                particle_box.particle_list.size - 1].state[0]]
         red_particle_pos_y = [
-            particle_box.particle_list[particle_box.particle_list.size - 1].state[1]]
+            particle_box.particle_list[
+                particle_box.particle_list.size - 1].state[1]]
 
         blue_particle_pos.set_data(blue_particle_pos_x, blue_particle_pos_y)
         red_particle_pos.set_data(red_particle_pos_x, red_particle_pos_y)
@@ -254,14 +286,15 @@ try:
             [particle.state[2:] for particle in particle_box.particle_list])
         velocities = lengths(velocity_components)
 
-        n, bins = np.histogram(velocities, int(0.5 * N))
+        n, bins = np.histogram(velocities, int(0.65 * N))
+        n = n/N
         top = bottom + n
         verts[1::5, 1] = top
         verts[2::5, 1] = top
 
-        # TODO: Some odd issue of returning a list here..
         return blue_particle_pos, red_particle_pos, time_display, patch
 
+    # set up histogram bars, limits on histogram plot
     barpath = path.Path(verts, codes)
     patch = patches.PathPatch(barpath, facecolor='green', edgecolor='yellow',
                               alpha=0.5)
