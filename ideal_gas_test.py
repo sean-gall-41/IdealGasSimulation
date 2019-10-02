@@ -4,20 +4,22 @@ import numpy as np
 import matplotlib.animation as ani
 
 X_LOWER, X_UPPER, Y_LOWER, Y_UPPER = -6.0, 6.0, -6.0, 6.0
-PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.04
+PARTICLE_MASS, PARTICLE_RADIUS = 0.01, 0.1
 SCALE_FACTOR = 0.75
 BOX_WIDTH = SCALE_FACTOR*(X_UPPER - X_LOWER)
 BOX_HEIGHT = SCALE_FACTOR*(Y_UPPER - Y_LOWER)
+
 
 class GasParticle:
     """docstring for GasParticle."""
 
     """To understand how we are going to initialize our ball object, 
     we need to understand how to plot artists in matplotlib"""
-    def __init__(self, mass = PARTICLE_MASS, radius = PARTICLE_RADIUS,
-                 init_state = [0.0, 0.0, 0.0, 0.0]):
+    def __init__(self, mass=PARTICLE_MASS, radius=PARTICLE_RADIUS,
+                 color='b', init_state=[0.0, 0.0, 0.0, 0.0]):
         self.mass = mass
         self.radius = radius
+        self.color = color
         self.init_state = np.asarray(init_state, dtype=float)
         self.state = self.init_state.copy()
 
@@ -34,24 +36,33 @@ class GasParticle:
 
 # A particle box represents a group of N gas particles confined
 # within a box of dimensions bounds
+
+
 class ParticleBox():
-    def __init__(self, N=25, bounds=[-1.0, 1.0, -1.0, 1.0]):
+    def __init__(self, N=25, color='b', bounds=[-1.0, 1.0, -1.0, 1.0]):
         self.t = 0.0
         self.N = N
         self.bounds = bounds
-        self.particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS,
+        self.particle_list = np.array([GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, color,
                                         [-0.5*BOX_WIDTH + BOX_WIDTH*np.random.random(), 
                                         -0.5*BOX_HEIGHT + BOX_HEIGHT*np.random.random(),
                                         -1.0 + np.random.random(), -1.0 + np.random.random()]) 
                                         for i in np.arange(N)])
 
+    def add_particle(self, particle):
+        if particle.state[0] - particle.radius < self.bounds[0] or \
+           particle.state[0] + particle.radius > self.bounds[1] or \
+           particle.state[1] - particle.radius < self.bounds[2] or \
+           particle.state[1] + particle.radius > self.bounds[3]:
+            raise OutOfBoundsError
+        self.N += 1
+        self.particle_list = np.append(self.particle_list, [particle])
     # Steps the state of the particle box forward by time dt
-    # => all particle positions and velocities are updated. 
+    # => all particle positions and velocities are updated.
+
     def step(self, dt):
         self.t += dt
         
-        if self.particle_list[0].collides_with(self.particle_list[1]):
-            print("collision!")
         # Somehow very cryptic code?
         D = squareform(pdist(np.asarray([particle.state[:2] for particle in self.particle_list])))
         ind1, ind2 = np.where(D <= 2 * PARTICLE_RADIUS)
@@ -90,16 +101,16 @@ class ParticleBox():
             self.particle_list[i2].state[2:] = v_cm - v_rel * m1 / (m1 + m2) 
 
         for particle in self.particle_list:
-            if particle.state[0] < particle.radius + self.bounds[0]:
+            if particle.state[0] <= particle.radius + self.bounds[0]:
                 particle.state[0] = particle.radius + self.bounds[0]
                 particle.state[2] *= -1
-            if particle.state[0] > -particle.radius + self.bounds[1]:
+            if particle.state[0] >= -particle.radius + self.bounds[1]:
                 particle.state[0] = -particle.radius + self.bounds[1]
                 particle.state[2] *= -1
-            if particle.state[1] < particle.radius + self.bounds[2]:
+            if particle.state[1] <= particle.radius + self.bounds[2]:
                 particle.state[1] = particle.radius + self.bounds[2]
                 particle.state[3] *= -1
-            if particle.state[1] > -particle.radius + self.bounds[3]:
+            if particle.state[1] >= -particle.radius + self.bounds[3]:
                 particle.state[1] = -particle.radius + self.bounds[3]
                 particle.state[3] *= -1
 
@@ -114,22 +125,25 @@ rect = plt.Rectangle((-0.5*BOX_WIDTH, -0.5*BOX_HEIGHT), BOX_WIDTH,
 ax_1.add_patch(rect)
 
 np.random.seed(0)
-my_box = ParticleBox(2, [-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
+my_box = ParticleBox(1, 'b',[-0.5*BOX_WIDTH, 0.5*BOX_WIDTH, -0.5*BOX_HEIGHT, 0.5*BOX_HEIGHT])
 
 my_box.particle_list[0].state = np.asarray([-1.0, 0.01, 1.0, 0.0])
-my_box.particle_list[1].state = np.asarray([1.0, -0.01, -1.0, 0.0])
+red_particle = GasParticle(PARTICLE_MASS, PARTICLE_RADIUS, 'r', [1.0, -0.01, -1.0, 0.0])
+my_box.add_particle(red_particle)
 
 marker_size = int(fig.dpi*2*PARTICLE_RADIUS*fig.get_figwidth() 
-                  / np.diff(ax_1.get_xbound())[0])
+                  / np.diff(ax_1.get_xbound())[0])-7
 particle_pos, = ax_1.plot([], [], 'bo', ms=marker_size)
+red_particle_pos, = ax_1.plot([], [], red_particle.color+'o', markersize=marker_size)
 
 
 dt = 1./30
 
 def init():
     particle_pos.set_data([], [])
+    red_particle_pos.set_data([], [])
     time_display.set_text('')
-    return particle_pos, time_display
+    return particle_pos, red_particle_pos, time_display
 
 def animate(i):
     global my_box, dt
@@ -139,11 +153,19 @@ def animate(i):
     particle_pos_x = [particle.state[0] for particle in my_box.particle_list]
     particle_pos_y = [particle.state[1] for particle in my_box.particle_list]
     
-    particle_pos.set_data(particle_pos_x, particle_pos_y)
-    time_display.set_text('time = %.1fs' % my_box.t)
-    return particle_pos, time_display
+    red_particle_pos_x = [
+        my_box.particle_list[
+            my_box.particle_list.size - 1].state[0]]
+    red_particle_pos_y = [
+        my_box.particle_list[
+            my_box.particle_list.size - 1].state[1]]
 
-anim = ani.FuncAnimation(fig, animate, frames=30, interval=30, blit=True,
+    particle_pos.set_data(particle_pos_x, particle_pos_y)
+    red_particle_pos.set_data(red_particle_pos_x, red_particle_pos_y)
+    time_display.set_text('time = %.1fs' % my_box.t)
+    return particle_pos, red_particle_pos, time_display
+
+anim = ani.FuncAnimation(fig, animate, frames=30, interval=60, blit=True,
                                init_func=init)
 
 ax_2 = fig.add_axes([0.6, 0.45,0.35,0.2])
